@@ -1,4 +1,6 @@
 - insert:
+    - id: qq-history-search-settings
+      name: dsh-qq-history-search/control
     - id: qq-history-search
       name: dsh-qq-history-search
       config:

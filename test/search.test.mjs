@@ -67,6 +67,14 @@ test('concurrency capacity prevents unbounded worker creation',async()=>{
  await assert.rejects(engine.search(request(group()),new AbortController().signal),error=>error.code==='capacity')
  assert.equal((await first).matches[0].text,'hello');assert.equal(engine.status().active,0);await engine.close()
 })
+test('maintenance refuses active searches and blocks new admission until released',async()=>{
+ const {dir,engine}=await setup();createArchive(dir,group(),[[1,'alice','hello']]);const signal=new AbortController().signal
+ const pending=engine.search(request(group()),signal);assert.equal(engine.beginMaintenance(),false);await pending
+ assert.equal(engine.beginMaintenance(),true);assert.equal(engine.beginMaintenance(),false)
+ await assert.rejects(engine.search(request(group()),signal),error=>error.code==='busy')
+ engine.endMaintenance();assert.equal((await engine.search(request(group()),signal)).matches[0].text,'hello')
+ await engine.close();assert.equal(engine.beginMaintenance(),false)
+})
 test('multiple groups can be searched concurrently without cross-conversation results',async()=>{
  const {dir,engine}=await setup({groups:['group-a','group-b','group-c'],maxScan:100})
  for(const name of ['group-a','group-b','group-c'])createArchive(dir,group(name),Array.from({length:40},(_,n)=>[n+1,'alice',`${name}-message-${n+1}`]))

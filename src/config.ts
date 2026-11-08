@@ -2,10 +2,9 @@
 import z from '@deepseek-ai/schemastery'
 import {isAbsolute,join} from 'node:path'
 import {identifier,type TenantId,type NetworkId,type AccountId,type PeerId} from 'dsh-im-kit'
-/** One administrator identity is bound to an exact transport account. */
-export interface Operator{tenant:string;network:string;account:string;user:string}
+import type {Settings} from './fields.ts'
 /** Host-provided allowlists and bounded query settings. */
-export interface Config{enabled:boolean;directory:string;tenants:string[];networks:string[];accounts:string[];groups:string[];privatePeers:string[];operators:Operator[];maxConcurrent:number;maxScan:number;maxScanBytes:number;maxResults:number;maxRecordBytes:number;maxResultBytes:number;timeoutMs:number}
+export interface Config extends Settings{}
 /** All archive scopes are excluded until explicitly configured. */
 export const Config:z<Config>=z.object({enabled:z.boolean().default(false),directory:z.string().default(''),tenants:z.array(z.string()).default([]),networks:z.array(z.string()).default(['onebot11']),accounts:z.array(z.string()).default([]),groups:z.array(z.string()).default([]),privatePeers:z.array(z.string()).default([]),operators:z.array(z.object({tenant:z.string(),network:z.string(),account:z.string(),user:z.string()})).default([]),maxConcurrent:z.number().min(1).max(64).step(1).default(4),maxScan:z.number().min(1).max(10000).step(1).default(512),maxScanBytes:z.number().min(1024).max(268435456).step(1).default(16777216),maxResults:z.number().min(1).max(100).step(1).default(20),maxRecordBytes:z.number().min(1024).max(67108864).step(1).default(4194304),maxResultBytes:z.number().min(1024).max(16777216).step(1).default(524288),timeoutMs:z.number().min(100).max(120000).step(1).default(10000)})
 /** Validated exact selections. Lists form an intersection, not tuple pairs. */

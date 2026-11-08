@@ -11,5 +11,9 @@ export interface HistoryService{
  /** @param request - scope and authenticated requester bound by trusted Host code. @param signal - caller cancellation. @returns bounded search page. */
  search(request:SearchRequest,signal:AbortSignal):Promise<SearchPage>
  /** @returns outstanding worker count with no message content. */
- status():{readonly active:number;readonly stopping:boolean}
+ status():{readonly active:number;readonly stopping:boolean;readonly maintenance:boolean}
+ /** @returns true only when no searches are running and new searches have been stopped. */
+ beginMaintenance():boolean
+ /** Resume admission after a failed or completed configuration update. */
+ endMaintenance():void
 }

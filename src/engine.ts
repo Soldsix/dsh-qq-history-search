@@ -12,6 +12,7 @@ export class HistoryEngine implements HistoryService{
  private readonly key=randomBytes(32)
  private readonly workers=new Set<Worker>()
  private stopping:Promise<void>|undefined
+ private maintenance=false
  /** @param spec - validated scope and resource settings. */
  constructor(private readonly spec:Spec){}
  private seal(position:Position,aad:string):string{
@@ -24,6 +25,7 @@ export class HistoryEngine implements HistoryService{
  /** @param input - trusted scope/requester and untrusted query parameters. @param signal - caller cancellation. @returns authorized page; cursors expire on service restart. */
  search(input:SearchRequest,signal:AbortSignal):Promise<SearchPage>{
   if(this.stopping)return Promise.reject(new HistoryError('closed'))
+  if(this.maintenance)return Promise.reject(new HistoryError('busy'))
   if(signal.aborted)return Promise.reject(new HistoryError('cancelled'))
   const parsed=requestSchema.safeParse(input);if(!parsed.success)return Promise.reject(new HistoryError('invalid-data'))
   const request=parsed.data,{account,kind,peerId}=request.scope
@@ -56,7 +58,11 @@ export class HistoryEngine implements HistoryService{
   })
  }
  /** @returns body-free operational status. */
- status():{readonly active:number;readonly stopping:boolean}{return{active:this.workers.size,stopping:Boolean(this.stopping)}}
+ status():{readonly active:number;readonly stopping:boolean;readonly maintenance:boolean}{return{active:this.workers.size,stopping:Boolean(this.stopping),maintenance:this.maintenance}}
+ /** @returns whether searches were idle and admission is now paused. */
+ beginMaintenance():boolean{if(this.stopping||this.maintenance||this.workers.size)return false;this.maintenance=true;return true}
+ /** Resume admission after a configuration attempt. */
+ endMaintenance():void{this.maintenance=false}
  /** @returns completion after owned workers stop. */
  close():Promise<void>{
   if(this.stopping)return this.stopping

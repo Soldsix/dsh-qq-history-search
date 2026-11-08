@@ -20,6 +20,6 @@ const match=z.strictObject({messageId:message,sender:user,receivedAt:timestamp,s
 /** Worker output carries no filesystem paths or source errors. */
 export const responseSchema=z.discriminatedUnion('ok',[z.strictObject({ok:z.literal(true),matches:z.array(match),partial:z.boolean(),next:z.nullable(positionSchema)}),z.strictObject({ok:z.literal(false),code:z.enum(['missing','schema-unsupported','invalid-data','unavailable'])})])
 /** Operational codes never include query text or database paths. */
-export type Failure='invalid-data'|'forbidden'|'capacity'|'timeout'|'cancelled'|'closed'|'missing'|'schema-unsupported'|'unavailable'
+export type Failure='invalid-data'|'forbidden'|'capacity'|'timeout'|'cancelled'|'closed'|'missing'|'schema-unsupported'|'unavailable'|'busy'
 /** Sanitized failure surfaced to the trusted Host. */
 export class HistoryError extends Error{constructor(readonly code:Failure){super('History: '+code)}}
