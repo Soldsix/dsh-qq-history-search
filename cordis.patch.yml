@@ -1,0 +1,5 @@
+- insert:
+    - id: qq-history-search
+      name: dsh-qq-history-search
+      config:
+        enabled: false
