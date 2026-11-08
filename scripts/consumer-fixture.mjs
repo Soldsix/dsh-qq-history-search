@@ -1,17 +1,20 @@
 /** Synthetic archive-and-search composition in a fresh consumer. */
 import assert from 'node:assert/strict'
-import {mkdtemp} from 'node:fs/promises'
-import {join,resolve} from 'node:path'
+import {mkdtemp,readFile} from 'node:fs/promises'
+import {join,resolve,dirname} from 'node:path'
 import {Context} from '@deepseek-ai/cordis'
-import {identifier,ImRuntime} from 'dsh-im-kit'
+import {createRequire} from 'node:module'
+import {pathToFileURL} from 'node:url'
+const require=createRequire(import.meta.url),owner=createRequire(require.resolve('dsh-qq-archive/package.json')),kit=owner.resolve('dsh-im-kit/package.json'),metadata=JSON.parse(await readFile(kit,'utf8'))
+const {identifier,ImRuntime}=await import(pathToFileURL(resolve(dirname(kit),metadata.main)).href)
 import * as archive from 'dsh-qq-archive'
 import * as history from 'dsh-qq-history-search'
 const dir=await mkdtemp(join(resolve('.'),'synthetic-composition-')),ctx=new Context(),im=new ImRuntime(),id=(domain,value)=>identifier(`im.${domain}`,value)
 const account={tenantId:id('tenant','tenant-a'),networkId:id('network','onebot11'),accountId:id('account','account-a')}
 const scope={account,kind:'group',peerId:id('peer','group-a')},source=(message,sender,text)=>({scope,messageId:id('message',message),senderId:id('user',sender),sentAt:100,receivedAt:100,parts:[{type:'text',text}],directedToBot:false})
-const selection={directory:dir,enabled:true,tenants:['tenant-a'],networks:['onebot11'],accounts:['account-a'],groups:['group-a']}
+const selection={enabled:true,tenants:['tenant-a'],networks:['onebot11'],accounts:['account-a'],groups:['group-a']}
 const service=ctx.plugin({name:'synthetic-profile',apply(child){child.effect(()=>child.provide('profileContext',{dir}));child.effect(()=>child.provide('im',im))}});await service.await()
-const af=ctx.plugin(archive,archive.Config(selection));await af.await()
+const af=ctx.plugin(archive,archive.Config({...selection,readEnabled:true}));await af.await()
 const hf=ctx.plugin(history,history.Config({...selection,operators:[{tenant:'tenant-a',network:'onebot11',account:'account-a',user:'admin'}]}));await hf.await()
 assert.deepEqual(await im.publish(source('one','alice','whale apple')),{accepted:1,failed:0})
 assert.deepEqual(await im.publish(source('two','bob','whale banana')),{accepted:1,failed:0})

@@ -1,8 +1,12 @@
 /** Synthetic IM events exercise installed DSH archive and history bundles. */
 import assert from 'node:assert/strict'
-import {writeFile} from 'node:fs/promises'
+import {writeFile,readFile} from 'node:fs/promises'
 import {setTimeout as delay} from 'node:timers/promises'
-import {identifier,ImRuntime} from 'dsh-im-kit'
+import {createRequire} from 'node:module'
+import {pathToFileURL} from 'node:url'
+import {dirname,resolve} from 'node:path'
+const require=createRequire(import.meta.url),owner=createRequire(require.resolve('dsh-qq-archive/package.json')),kit=owner.resolve('dsh-im-kit/package.json'),metadata=JSON.parse(await readFile(kit,'utf8'))
+const {identifier,ImRuntime}=await import(pathToFileURL(resolve(dirname(kit),metadata.main)).href)
 export const name='synthetic-history-fixture'
 export function apply(ctx,config){
  const im=new ImRuntime();ctx.effect(()=>ctx.provide('im',im));ctx.effect(()=>()=>im.close())

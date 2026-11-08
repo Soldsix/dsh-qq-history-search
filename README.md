@@ -1,18 +1,30 @@
 # dsh-qq-history-search
 
-An opt-in, bounded, read-only search service for archives written by `dsh-qq-archive` format 1. The plugin is under development and is not ready for production or public release. It does not register a model-facing tool, a QQ handler or an automatic memory system.
+Opt-in, bounded history search through the public `dsh-qq-archive` Host service. The archive owns all SQLite access. This plugin owns requester authorization, query limits and encrypted pagination; it accepts no database path and registers no model tool, QQ command or automatic memory system.
 
-The caller is trusted Host code: it must bind `requester` and `scope` to an authenticated incoming event and must never let the model choose either identity. Ordinary requesters may search only their own archived text within a configured conversation. Explicit operators can search another sender or all senders; each operator is bound to an exact tenant, network, bot account and user ID. Same-process plugins and local administrators are trusted: this library does not defend against a malicious Host or filesystem administrator.
+## Install
 
-The configuration lists form an intersection, not explicit account/group pairs. No scope is enabled by default. Search uses exact, case-sensitive Unicode substring matching across text segments. It does not recognize aliases, search images, or prove that a missing result is absent from the whole history. Each page has limits on records scanned, bytes inspected, matches, result bytes, concurrency and time. `partial: true` means some oversized records or results were omitted; `next` means more records remain in the current bounded scan. Cursors are encrypted, tied to scope, requester, sender filter and query, and expire when the service restarts.
+```sh
+dsh plugin --profile MY_PROFILE add https://github.com/Soldsix/dsh-qq-archive/releases/download/v0.2.1/dsh-qq-archive-0.2.1.tgz
+dsh plugin --profile MY_PROFILE add https://github.com/Soldsix/dsh-qq-history-search/releases/download/v0.2.1/dsh-qq-history-search-0.2.1.tgz
+```
 
-SQLite is opened with `readOnly` and `query_only`; platform SQLite may still need WAL shared-memory sidecars. Results exclude attachment references and bytes. File permissions and retention are managed by the operator; archives are not encrypted. No existing data is deleted, migrated or changed by this plugin. Requires Node ^22.19 or >=24, DSH 0.2.2-rc.1, `dsh-im-kit` 0.2.0 and an archive produced by the compatible archive plugin.
+The library dependencies are fetched automatically; enable the archive bundle separately, select its scopes and set `readEnabled: true`. History search waits for its `qqArchive` service and stops when that service is removed. Both bundles are disabled initially. Target: DSH 0.2.2-rc.1, Cordis ~4.1.0, Node ^22.19 or >=24.
 
-The owner-only DSH bundle page configures selections, operator bindings and limits. A change requires searches to be idle, blocks new searches during the update and restarts the service; existing cursors expire. Install the compatible `dsh-im-kit` package into the profile, then use `dsh plugin --profile <profile> add <archive>` to add this bundle. The bundle remains disabled until explicitly configured.
+## Authorization
 
-For example, a profile patch can select one synthetic group and bind one operator. Replace every example ID with the authenticated transport's actual identities; omit `operators` if cross-sender search is not intended.
+Trusted Host code must bind `requester` and `scope` to an authenticated incoming event; the model must never choose them. Ordinary requesters can retrieve only their own text in a configured conversation. Explicit operators can request another sender or all senders. Each operator is bound to the exact tenant, network, bot account and user ID. The caller must separately enforce whether the result may be disclosed to the intended output audience.
+
+Scope lists intersect rather than forming account/group pairs; no scope is selected by default. The archive service enforces its own scope selections again. Same-process plugins and local administrators are trusted; this API cannot sandbox malicious Host code. This preview does not expose queries directly to an LLM.
 
 ```yaml
+- id: qq-archive
+  config:
+    enabled: true
+    readEnabled: true
+    tenants: [example-tenant]
+    accounts: [example-account]
+    groups: [example-group]
 - id: qq-history-search
   config:
     enabled: true
@@ -27,4 +39,25 @@ For example, a profile patch can select one synthetic group and bind one operato
         user: example-admin
 ```
 
-Run `npm test` with synthetic fixtures. A downstream authenticated adapter, actual QQ use, Linux compatibility and release have not yet been validated. The `dsh-im-kit` package currently requires a locally built archive until published.
+Replace all example IDs with the authenticated provider's identities. Omit `operators` when cross-sender reads are not intended. Storage location is configured only on the archive plugin. The unpublished prototype's history `directory` setting has been removed; no stored records or database version are changed.
+
+## Query behavior
+
+`qqHistorySearch.search(request, signal)` matches exact, case-sensitive Unicode substrings across text segments. It does not recognize aliases or search image content. A bounded empty page does not establish absence from the full history. Complete text is returned without attachment references or bytes. `partial: true` reports oversized records/results skipped; `next` indicates another page is available.
+
+Limits cover scanned records/bytes, returned records/bytes, record bytes, concurrent queries and time. The archive owner's stricter ceilings also apply. Encrypted cursors bind scope, requester, sender filter and query; they expire on service restart. A caller cancellation or deadline ends only that query. Disposal waits for its queries without closing the archive or interrupting ingestion and other consumers.
+
+The native owner settings page configures scopes, operator bindings and limits with revision checks. Changes require idle queries and pause admission during the update; restart expires existing cursors. Operational counters contain no message text. Archive file security, encryption and retention remain the storage owner's responsibility.
+
+## Development and preview scope
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run check
+npm pack --pack-destination artifacts
+npm run test:native
+npm run test:browser
+npm run test:web
+```
+
+All fixtures use synthetic identities and fresh profiles. Never point tests at production records. This preview is a Host query service; authenticated QQ/model adapters, public-output privacy, semantic memory, natural conversation recall and real QQ/desktop verification remain separate work.

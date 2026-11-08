@@ -1,20 +1,20 @@
-/** Authorization, encrypted scope-bound cursors and cancellable worker ownership. */
+/** Authorization, encrypted scope-bound cursors and cancellable archive service calls. */
 import {createCipheriv,createDecipheriv,randomBytes} from 'node:crypto'
-import {Worker} from 'node:worker_threads'
+import {ArchiveReadError,type ArchiveReaderService,type ArchivePosition} from 'dsh-qq-archive'
 import {scopeKey,type UserId} from 'dsh-im-kit'
 import type {Spec} from './config.ts'
 import type {HistoryService,SearchPage,SearchRequest} from './types.ts'
-import {HistoryError,positionSchema,requestSchema,responseSchema} from './wire.ts'
+import {HistoryError,positionSchema,requestSchema} from './wire.ts'
 
-type Position={receivedAt:number;messageId:string}
-/** Bounded read-only searches. Requester identity must come from a trusted Host. */
+type Position=ArchivePosition
+/** Authorized archive service queries. Requester identity must come from a trusted Host. */
 export class HistoryEngine implements HistoryService{
  private readonly key=randomBytes(32)
- private readonly workers=new Set<Worker>()
+ private readonly active=new Map<AbortController,Promise<SearchPage>>()
  private stopping:Promise<void>|undefined
  private maintenance=false
  /** @param spec - validated scope and resource settings. */
- constructor(private readonly spec:Spec){}
+ constructor(private readonly spec:Spec,private readonly archive:ArchiveReaderService){}
  private seal(position:Position,aad:string):string{
   const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',this.key,nonce);cipher.setAAD(Buffer.from(aad))
   const body=Buffer.concat([cipher.update(JSON.stringify(position),'utf8'),cipher.final()]);return Buffer.concat([nonce,cipher.getAuthTag(),body]).toString('base64url')
@@ -35,38 +35,37 @@ export class HistoryEngine implements HistoryService{
   if(request.allSenders&&(!operator||request.sender))return Promise.reject(new HistoryError('forbidden'))
   if(request.sender&&request.sender!==request.requester&&!operator)return Promise.reject(new HistoryError('forbidden'))
   if(request.limit>this.spec.maxResults)return Promise.reject(new HistoryError('invalid-data'))
-  if(this.workers.size>=this.spec.maxConcurrent)return Promise.reject(new HistoryError('capacity'))
+  if(this.active.size>=this.spec.maxConcurrent)return Promise.reject(new HistoryError('capacity'))
   const sender:UserId|null=request.allSenders?null:request.sender??request.requester,aad=JSON.stringify([scopeKey(request.scope),request.requester,sender,request.query])
   let before:Position|null=null;try{if(request.before)before=this.open(request.before,aad)}catch(error){return Promise.reject(new HistoryError('invalid-data'))}
-  const data={directory:this.spec.directory,scope:request.scope,sender,query:request.query,limit:request.limit,maxScan:this.spec.maxScan,maxScanBytes:this.spec.maxScanBytes,maxRecordBytes:this.spec.maxRecordBytes,maxResultBytes:this.spec.maxResultBytes,before}
-  let worker:Worker;try{worker=new Worker(new URL('./worker.js',import.meta.url),{workerData:data})}catch(error){return Promise.reject(new HistoryError('unavailable'))}
-  this.workers.add(worker)
-  return new Promise((resolve,reject)=>{
-   let settled=false,page:SearchPage|undefined,failure:HistoryError|undefined
-   const stop=()=>{void worker.terminate().catch(()=>{})}
-   const finish=(error:HistoryError|undefined,page?:SearchPage)=>{if(settled)return;settled=true;signal.removeEventListener('abort',abort);if(error)reject(error);else if(page)resolve(page);else reject(new HistoryError('unavailable'))}
-   const abort=()=>{finish(new HistoryError('cancelled'));stop()}
-   const timer=setTimeout(()=>{finish(new HistoryError('timeout'));stop()},this.spec.timeoutMs)
-   worker.once('message',(raw:unknown)=>{
-    const result=responseSchema.safeParse(raw);if(!result.success){failure=new HistoryError('invalid-data');stop();return}
-    if(!result.data.ok){failure=new HistoryError(result.data.code);return}
-    const {matches,partial,next}=result.data;page={matches,partial,next:next?this.seal(next,aad):null}
-   })
-   worker.once('error',()=>{finish(new HistoryError('unavailable'));stop()})
-   worker.once('exit',code=>{clearTimeout(timer);signal.removeEventListener('abort',abort);this.workers.delete(worker);if(code!==0)finish(new HistoryError(this.stopping?'closed':'unavailable'));else if(failure)finish(failure);else finish(undefined,page)})
-   signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort()
+  const data={scope:request.scope,sender,query:request.query,limit:request.limit,maxScan:this.spec.maxScan,maxScanBytes:this.spec.maxScanBytes,maxRecordBytes:this.spec.maxRecordBytes,maxResultBytes:this.spec.maxResultBytes,before}
+  const cancellation=new AbortController(),abort=()=>cancellation.abort(new HistoryError('cancelled'))
+  signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort()
+  const timer=setTimeout(()=>cancellation.abort(new HistoryError('timeout')),this.spec.timeoutMs)
+  const task=Promise.resolve().then(async()=>{
+   try{
+    const {matches,partial,next}=await this.archive.read(data,cancellation.signal)
+    if(cancellation.signal.aborted)throw cancellation.signal.reason
+    return{matches,partial,next:next?this.seal(next,aad):null}
+   }catch(error){
+    if(cancellation.signal.aborted&&cancellation.signal.reason instanceof HistoryError)throw cancellation.signal.reason
+    if(error instanceof ArchiveReadError)throw new HistoryError(error.code)
+    throw new HistoryError('unavailable')
+   }finally{clearTimeout(timer);signal.removeEventListener('abort',abort);this.active.delete(cancellation)}
   })
+  this.active.set(cancellation,task)
+  return task
  }
  /** @returns body-free operational status. */
- status():{readonly active:number;readonly stopping:boolean;readonly maintenance:boolean}{return{active:this.workers.size,stopping:Boolean(this.stopping),maintenance:this.maintenance}}
+ status():{readonly active:number;readonly stopping:boolean;readonly maintenance:boolean}{return{active:this.active.size,stopping:Boolean(this.stopping),maintenance:this.maintenance}}
  /** @returns whether searches were idle and admission is now paused. */
- beginMaintenance():boolean{if(this.stopping||this.maintenance||this.workers.size)return false;this.maintenance=true;return true}
+ beginMaintenance():boolean{if(this.stopping||this.maintenance||this.active.size)return false;this.maintenance=true;return true}
  /** Resume admission after a configuration attempt. */
  endMaintenance():void{this.maintenance=false}
- /** @returns completion after owned workers stop. */
+ /** @returns completion after owned queries settle. */
  close():Promise<void>{
   if(this.stopping)return this.stopping
-  this.stopping=Promise.resolve().then(async()=>{const workers=[...this.workers];const results=await Promise.allSettled(workers.map(worker=>worker.terminate()));const failures=results.filter(result=>result.status==='rejected');if(failures.length)throw new HistoryError('unavailable')})
+  this.stopping=Promise.resolve().then(async()=>{const active=[...this.active];for(const [controller] of active)controller.abort(new HistoryError('closed'));await Promise.allSettled(active.map(([,task])=>task))})
   return this.stopping
  }
 }

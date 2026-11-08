@@ -3,7 +3,7 @@ import * as z from 'zod/mini'
 import type {Settings} from './fields.ts'
 import type {SaveRequest,Snapshot} from './control-types.ts'
 const operator=z.strictObject({tenant:z.string(),network:z.string(),account:z.string(),user:z.string()})
-const config=z.strictObject({enabled:z.boolean(),directory:z.string(),tenants:z.array(z.string()),networks:z.array(z.string()),accounts:z.array(z.string()),groups:z.array(z.string()),privatePeers:z.array(z.string()),operators:z.array(operator),maxConcurrent:z.int(),maxScan:z.int(),maxScanBytes:z.int(),maxResults:z.int(),maxRecordBytes:z.int(),maxResultBytes:z.int(),timeoutMs:z.int()} satisfies {[Key in keyof Settings]:z.ZodMiniType<Settings[Key]>})
+const config=z.strictObject({enabled:z.boolean(),tenants:z.array(z.string()),networks:z.array(z.string()),accounts:z.array(z.string()),groups:z.array(z.string()),privatePeers:z.array(z.string()),operators:z.array(operator),maxConcurrent:z.int(),maxScan:z.int(),maxScanBytes:z.int(),maxResults:z.int(),maxRecordBytes:z.int(),maxResultBytes:z.int(),timeoutMs:z.int()} satisfies {[Key in keyof Settings]:z.ZodMiniType<Settings[Key]>})
 const revision=z.string().check(z.regex(/^[a-f0-9]{64}$/))
 /** Versioned settings patch. */
 export const saveSchema:z.ZodMiniType<SaveRequest>=z.strictObject({revision,patch:z.pipe(z.partial(config),z.transform(value=>Object.fromEntries(Object.entries(value).filter(([,item])=>item!==undefined)) as Partial<Settings>))})
