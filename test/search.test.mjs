@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtemp,mkdir} from 'node:fs/promises'
+import {mkdtemp,mkdir,stat} from 'node:fs/promises'
 import {resolve as absolute,join} from 'node:path'
 import {DatabaseSync} from 'node:sqlite'
 import {createHash} from 'node:crypto'
@@ -94,4 +94,10 @@ test('Cordis provides only the host service and disposes its workers',async()=>{
  const {dir}=await setup();const ctx=new Context(),base=ctx.plugin({name:'synthetic-profile',apply(child){child.effect(()=>child.provide('profileContext',{dir}))}});await base.await()
  const fiber=ctx.plugin(plugin,plugin.Config(config(dir)));await fiber.await();assert.ok(ctx.qqHistorySearch);assert.equal(ctx.qqHistorySearch.status().active,0)
  await fiber.dispose();assert.equal(ctx.get('qqHistorySearch'),undefined);await base.dispose()
+})
+test('disabled Cordis plugin does not create a directory or register a service',async()=>{
+ const root=absolute('.test-artifacts');await mkdir(root,{recursive:true});const dir=await mkdtemp(join(root,'disabled-')),target=join(dir,'never-created')
+ const ctx=new Context(),base=ctx.plugin({name:'synthetic-disabled-profile',apply(child){child.effect(()=>child.provide('profileContext',{dir}))}});await base.await()
+ const fiber=ctx.plugin(plugin,plugin.Config({enabled:false,directory:target}));await fiber.await();assert.equal(ctx.get('qqHistorySearch'),undefined)
+ await assert.rejects(stat(target),error=>error.code==='ENOENT');await fiber.dispose();await base.dispose()
 })
