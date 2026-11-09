@@ -2,18 +2,39 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
+/:
+  en: 15bafb8f4ea8ea2a
+  zh: 7127aa1ee56dc3a8
 /dsh-qq-history-search:
-  en: 2023a378aede06e3
-  zh: 4b24aac749343ca7
+  en: d13d6a94b7666302
+  zh: 8bc9f9796a0b7d46
+/dsh-qq-history-search/summary:
+  en: 5a8668f2f83e7b26
+  zh: 3563558f34fc4932
+/dsh-qq-history-search/table-of-contents:
+  en: 82d626a474b75d11
+  zh: ae2e448cc549c1ca
 /dsh-qq-history-search/install:
-  en: 02f24679aac933c3
-  zh: ef4693b7492a2630
+  en: 478e6e0243818e59
+  zh: 6e5f80342f32cf1e
 /dsh-qq-history-search/authorization:
-  en: f3ee9d4a259ccc54
-  zh: 28b9e1d4d5f90cab
+  en: c11b5978113f549f
+  zh: c57c9ed61898742a
+/dsh-qq-history-search/native-model-tool:
+  en: 3e6b7a3f0251feb3
+  zh: 7a54acbc63d53c35
 /dsh-qq-history-search/query-behavior:
-  en: ab1b0c775e58aaf7
-  zh: 978d389d324a55ac
-/dsh-qq-history-search/development-and-preview-scope:
-  en: b1ba02decaee3b23
-  zh: 98754f187d9a8248
+  en: 2342f66f7c294451
+  zh: 5f8f671eedb5baf9
+/dsh-qq-history-search/verification-and-limits:
+  en: 50d850748f8fc124
+  zh: 5a1207cc0cc28bd1
+/dsh-qq-history-search/model-experience:
+  en: 19aa7e9582b4e3b9
+  zh: c318e4078ce6e727
+/dsh-qq-history-search/known-limitations-and-deferred-work:
+  en: ba9bdccfc259e3fb
+  zh: 149d7c3c7f275be6
+/dsh-qq-history-search/dev-note:
+  en: 057bd8296aeb9512
+  zh: d010028c27ba9162

@@ -17,17 +17,17 @@ const manifest=JSON.parse(await readFile(join(root,'package.json'),'utf8')),dsh=
 const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>!/KEY|SECRET|TOKEN|PASSWORD|DEEPSEEK_BASE_URL/i.test(key)&&key.toUpperCase()!=='PATH'))
 await mkdir(join(area,'temp'),{recursive:true});Object.assign(env,{PATH:join(root,'node_modules','.bin')+delimiter+(process.env.PATH??process.env.Path??''),DSH_HOME:home,TEMP:join(area,'temp'),TMP:join(area,'temp'),DSH_PRIMARY_RUNTIME:'',DSH_SYSTEM_PROMPT:'Synthetic isolated profile.',DEEPSEEK_API_KEY:'synthetic-loopback-only',DEEPSEEK_BASE_URL:'http://127.0.0.1:9/anthropic'})
 async function run(argv,cwd){const timeout=AbortSignal.timeout(180000),child=spawn(process.execPath,argv,{cwd,env,windowsHide:true,signal:timeout,stdio:['ignore','pipe','pipe']});let output='',failure;child.stdout.on('data',data=>{output+=data});child.stderr.on('data',data=>{output+=data});child.once('error',error=>{failure=error});const [code,signal]=await new Promise(done=>child.once('close',(...values)=>done(values)));if(failure)throw failure;assert.equal(signal,null);assert.equal(code,0,output.slice(-1800));return output}
+const pnpm=await pnpmScript(root)
 if(resume<0){
  await run([dsh,'--profile',profile,'--from-default-profile','sdk','--dump-config'],area)
  const manifest=JSON.parse(await readFile(join(profileRoot,'package.json'),'utf8'));manifest.pnpm={...manifest.pnpm,overrides:{zod:'4.6.6',undici:'8.12.2',fflate:'0.8.3','@modelcontextprotocol/client':'2.3.0'}};await writeFile(join(profileRoot,'package.json'),JSON.stringify(manifest,null,2)+'\n')
  await writeFile(join(profileRoot,'.npmrc'),'package-import-method=copy\nstore-dir='+join(runs,'pnpm-store').replaceAll('\\','/')+'\n')
- const pnpm=await pnpmScript(root)
 const boot=JSON.parse(await readFile(join(root,'node_modules','@deepseek-ai','dsh-app-boot','package.json'),'utf8')),bootPeers=Object.entries(boot.peerDependencies).map(([name,version])=>name+'@'+version)
 const peers=[...bootPeers,'@deepseek-ai/cordis@~4.1.0','@deepseek-ai/cordis-plugin-loader@~1.1.0','@deepseek-ai/schemastery@~3.19.0',...['app-boot','brand','config-editor','typert-protocol','sandbox','llm-deepseek','llm-deepseek-api-key'].map(name=>'@deepseek-ai/dsh-'+name+'@0.2.2-rc.1')]
  await run([pnpm,'add','@deepseek-ai/dsh@0.2.2-rc.1',...peers,'--ignore-scripts'],profileRoot)
+}
  await run([dsh,'plugin','--profile',profile,'add',archive],area);await run([dsh,'plugin','--profile',profile,'add',history],area)
 for(;;){const missing=await requiredProfilePeers(profileRoot);if(!missing.length)break;await run([pnpm,'add',...missing,'--ignore-scripts'],profileRoot)}
-}
 const fixture=join(profileRoot,'history-fixture.mjs'),resultPath=join(attempt,'result.json'),db=join(attempt,'db');await copyFile(join(root,'scripts','native-fixture.mjs'),fixture)
 const selection={enabled:true,tenants:['tenant-a'],networks:['onebot11'],accounts:['account-a'],groups:['group-a']}
 await writeFile(join(profileRoot,'cordis.patch.yml'),JSON.stringify([{id:'qq-archive',config:{...selection,directory:db,readEnabled:true}},{id:'qq-history-search',config:{...selection,operators:[{tenant:'tenant-a',network:'onebot11',account:'account-a',user:'admin'}]}},{insert:[{id:'history-fixture',name:pathToFileURL(fixture).href,config:{resultPath}}]}],null,2)+'\n')

@@ -1,7 +1,7 @@
 {
   "name": "dsh-qq-history-search",
-  "version": "0.2.1",
-  "description": "Scoped, bounded, host-only search for DSH QQ archives.",
+  "version": "0.3.0-development",
+  "description": "Authorized archive retrieval with an opt-in authenticated DSH model tool.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -56,12 +56,16 @@
     "@deepseek-ai/dsh-brand": "0.2.2-rc.1",
     "@deepseek-ai/cordis-plugin-loader": "~1.1.0",
     "@deepseek-ai/dsh-config-editor": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.1"
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1"
   },
   "dependencies": {
     "zod": "4.6.6",
     "dsh-im-kit": "https://github.com/Soldsix/dsh-im-kit/releases/download/v0.2.1/dsh-im-kit-0.2.1.tgz",
-    "dsh-qq-archive": "https://github.com/Soldsix/dsh-qq-archive/releases/download/v0.2.1/dsh-qq-archive-0.2.1.tgz"
+    "dsh-qq-archive": "https://github.com/Soldsix/dsh-qq-archive/releases/download/v0.2.1/dsh-qq-archive-0.2.1.tgz",
+    "dsh-im-requests": "https://github.com/Soldsix/dsh-im-requests/releases/download/v0.1.0/dsh-im-requests-0.1.0.tgz"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.1",
@@ -106,8 +110,9 @@
     "typecheck": "tsc -p tsconfig.host.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "prepack": "npm run build && node scripts/prepare-pack.mjs",
-    "check": "npm test",
+    "check": "npm run typecheck && npm test && node scripts/verify-package.mjs",
     "test:native": "node scripts/test-native.mjs",
+    "test:model": "node scripts/test-model.mjs",
     "test:web": "node scripts/test-web.mjs",
     "test:browser": "node scripts/install-browser.mjs",
     "test:consumer": "node scripts/test-consumer.mjs"

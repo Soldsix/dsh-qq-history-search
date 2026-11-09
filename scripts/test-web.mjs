@@ -25,18 +25,18 @@ async function run(argv,cwd){
  const [code,signal]=await new Promise(done=>child.once('close',(...values)=>done(values)))
  if(failure)throw failure;assert.equal(signal,null);assert.equal(code,0,output.slice(-1800));return output
 }
+const pnpm=await pnpmScript(root)
 if(resume<0){
 await run([dsh,'--profile',profile,'--from-default-profile','web','--dump-config'],area)
 const manifest=JSON.parse(await readFile(join(profileRoot,'package.json'),'utf8')),own=JSON.parse(await readFile(join(root,'package.json'),'utf8'))
 manifest.pnpm={...manifest.pnpm,overrides:own.overrides};await writeFile(join(profileRoot,'package.json'),JSON.stringify(manifest,null,2)+'\n')
 await writeFile(join(profileRoot,'.npmrc'),'package-import-method=copy\nstore-dir='+join(runs,'pnpm-store').replaceAll('\\','/')+'\n')
-const pnpm=await pnpmScript(root)
 const boot=JSON.parse(await readFile(join(root,'node_modules','@deepseek-ai','dsh-app-boot','package.json'),'utf8')),bootPeers=Object.entries(boot.peerDependencies).map(([name,version])=>name+'@'+version)
 const peers=[...bootPeers,'@deepseek-ai/cordis@~4.1.0','@deepseek-ai/cordis-plugin-loader@~1.1.0','@deepseek-ai/schemastery@~3.19.0',...['app-boot','brand','config-editor','typert-protocol','client-connection','sandbox','llm-deepseek','llm-deepseek-api-key'].map(name=>'@deepseek-ai/dsh-'+name+'@0.2.2-rc.1')]
 await run([pnpm,'add','@deepseek-ai/dsh@0.2.2-rc.1',...peers,'--ignore-scripts'],profileRoot)
+}
 await run([dsh,'plugin','--profile',profile,'add',archive],area);await run([dsh,'plugin','--profile',profile,'add',history],area)
 for(;;){const missing=await requiredProfilePeers(profileRoot);if(!missing.length)break;await run([pnpm,'add',...missing,'--ignore-scripts'],profileRoot)}
-}
 await writeFile(join(profileRoot,'cordis.patch.yml'),JSON.stringify([{id:'qq-archive',config:{enabled:true,readEnabled:true,tenants:['tenant-a'],accounts:['account-a'],groups:['group-a']}},{id:'qq-history-search-settings',config:{statusRefreshMs:250}},{id:'session-title-llm',disabled:true},{id:'session-telemetry-otel',disabled:true}],null,2)+'\n')
 const child=spawn(process.execPath,[join(profileRoot,'node_modules','@deepseek-ai','dsh','lib','bin.js'),'--profile',profile,'--host','127.0.0.1','--port','0','--no-open'],{cwd:area,env,windowsHide:true,stdio:['pipe','pipe','pipe']})
 let stdout='',stderr='',exitCode,context,page;const errors=[],checks=[],exit=once(child,'close').then(([code,signal])=>{exitCode=code;return{code,signal}})
@@ -56,6 +56,7 @@ try{
  const operators=form.getByLabel(/管理员绑定|Operators/);await operators.fill('{broken');await form.getByRole('button',{name:/^保存$|^Save$/}).click();await page.getByText(/^请检查配置与会话选择$|^Check settings and scope selections$/).waitFor();assert.equal(await operators.inputValue(),'{broken');checks.push('invalid-operator-json-retains-draft')
  await operators.fill(JSON.stringify([{tenant:'tenant-test',network:'onebot11',account:'account-test',user:'admin-test'}]));await form.getByRole('button',{name:/^保存$|^Save$/}).click();await page.getByText(/^历史检索配置已保存$|^History settings saved$/).waitFor();await settled();checks.push('scoped-operator-settings-save')
  await form.getByRole('switch',{name:/启用历史检索|Enable history search/}).click();await form.getByRole('button',{name:/^保存$|^Save$/}).click();await form.getByText(/历史检索运行中|History search active/).waitFor();checks.push('enabled-service')
+ const modelTool=form.getByRole('switch',{name:/启用可信模型查询工具|Enable authenticated model tool/});await modelTool.click();await form.getByRole('button',{name:/^保存$|^Save$/}).click();await page.getByText(/^请先启用可信消息请求提供方$|^Enable a trusted messaging request provider first$/).waitFor();assert.equal(await modelTool.getAttribute('aria-checked'),'true');await modelTool.click();checks.push('model-tool-missing-provider-retains-draft-and-refuses-save')
  const maxScan=form.getByLabel(/每页最多扫描条数|Maximum records per page/);const nextScan=(await maxScan.inputValue())==='101'?'100':'101';await maxScan.fill(nextScan);await form.getByRole('button',{name:/^保存$|^Save$/}).click();await page.getByText(/^历史检索配置已保存$|^History settings saved$/).waitFor();await settled();assert.equal(await maxScan.inputValue(),nextScan);checks.push('idle-reload-saves-limits')
  await page.screenshot({path:join(attempt,'light.png'),fullPage:true});await page.emulateMedia({colorScheme:'dark'});await page.screenshot({path:join(attempt,'dark.png'),fullPage:true})
  await page.getByRole('button',{name:/^收起侧边栏$|^Collapse sidebar$/}).click();await page.setViewportSize({width:520,height:1000});await form.evaluate(element=>element.scrollIntoView({block:'start'}));assert.ok(await form.evaluate(element=>element.scrollWidth<=element.clientWidth+2));await page.screenshot({path:join(attempt,'narrow.png'),fullPage:true});checks.push('light-dark-narrow-layout')

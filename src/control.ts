@@ -34,7 +34,9 @@ export class HistoryControl extends TypertRemoteService{
  private target():Entry{const all=this.ctx.configEditor.entries(),entry=all.find(value=>value.options.id===this.config.targetEntryId);if(!entry||entry.options.name!=='dsh-qq-history-search'||!entry.fiber||all.some(value=>value!==entry&&value.options.name==='dsh-qq-history-search'))throw fail('unavailable');return entry}
  private snapshot():Snapshot{
   const entry=this.target(),config=parse(entry.fiber?.effectiveConfig,this.ctx.profileContext.dir),service=this.history,status=service?.status()
-  return{config:structuredClone(config),revision:revision(config),active:Boolean(service),running:status?.active??0,maintenance:status?.maintenance??false,entryDisabled:entry.disabled,refreshMs:this.config.statusRefreshMs}
+  const provider=this.ctx.get('imRequests')?.status(),tool=this.ctx.get('qqHistoryModelTool')?.status()
+  const toolState:Snapshot['toolState']=!config.toolsEnabled?'disabled':!service?'inactive':!provider||provider.closed?'waiting-provider':config.groups.length&&provider.groupSessionMode!=='sender'?'sender-isolation-required':tool&&!tool.closed?'registered':'waiting-provider'
+  return{config:structuredClone(config),revision:revision(config),active:Boolean(service),running:status?.active??0,maintenance:status?.maintenance??false,entryDisabled:entry.disabled,refreshMs:this.config.statusRefreshMs,toolState,toolRunning:tool?.active??0}
  }
  private serial<T>(operation:()=>Promise<T>):Promise<T>{this.owner();const task=this.tail.then(()=>{if(this.lifetime.signal.aborted)throw fail('cancelled');return operation()});this.tail=task.then(()=>{},()=>{});return task}
  /** @returns settings and counters without messages or search terms. */
@@ -47,7 +49,8 @@ export class HistoryControl extends TypertRemoteService{
   return this.serial(async()=>{
    const entry=this.target(),current=parse(entry.fiber?.effectiveConfig,this.ctx.profileContext.dir)
    if(revision(current)!==edit.revision)throw fail('conflict')
-   parse({...current,...edit.patch},this.ctx.profileContext.dir)
+   const next=parse({...current,...edit.patch},this.ctx.profileContext.dir)
+   if(next.enabled&&next.toolsEnabled){const provider=this.ctx.get('imRequests')?.status();if(!provider||provider.closed)throw fail('request-provider-missing');if(next.groups.length&&provider.groupSessionMode!=='sender')throw fail('sender-isolation-required')}
    const service=this.history;if(!service&&current.enabled&&!entry.disabled)throw fail('busy')
    if(service&&!service.beginMaintenance())throw fail('busy')
    let reason:ControlFailure='apply-failed'

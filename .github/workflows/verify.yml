@@ -43,6 +43,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm pack --pack-destination artifacts
       - run: npm run test:native
+      - if: matrix.node == '24.x'
+        run: npm run test:model
   web:
     timeout-minutes: 20
     runs-on: ubuntu-latest
