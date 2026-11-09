@@ -16,4 +16,8 @@ test('public verification rejects undeclared files, local dependencies and unpai
  for(const invalid of [{...manifest,bin:{run:'dist/index.js'}},{...manifest,dependencies:{...manifest.dependencies,'dsh-im-requests':'file:../private'}},{...manifest,dependencies:{...manifest.dependencies,'dsh-qq-archive':'^0.2.1'}}])assert.throws(()=>verifyManifest(invalid))
  assert.throws(()=>verifyFiles(['package.json','data/chat.sqlite3']));assert.throws(()=>verifyFiles(['package.json']))
  const en=await readFile(new URL('../README.md',import.meta.url),'utf8'),zh=await readFile(new URL('../README.zh.md',import.meta.url),'utf8');verifyPair(en,zh);assert.throws(()=>verifyPair(en,zh+'extra\n'));assert.throws(()=>verifyPair(en,zh.replace('id="install"','id="wrong"')))
+ const lf=text=>text.replaceAll('\r\n','\n'),crlf=text=>lf(text).replaceAll('\n','\r\n')
+ verifyPair(lf(en),lf(zh));verifyPair(crlf(en),crlf(zh))
+ assert.throws(()=>verifyPair(crlf(en)+'\r\n',crlf(zh)))
+ assert.throws(()=>verifyPair(en.replace('## Summary','## Missing'),zh),/Missing summary heading/)
 })

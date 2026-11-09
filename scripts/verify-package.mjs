@@ -21,10 +21,12 @@ export function verifyFiles(paths){
 }
 /** @param english - English page. @param chinese - paired Chinese page. Check structure and summaries. */
 export function verifyPair(english,chinese){
- for(const text of [english,chinese]){assert.match(text,/^kind: "package-bundle"$/m);assert.match(text,/^description: ".+"$/m);assert.ok(text.endsWith('\n')&&!text.endsWith('\n\n'))}
+ for(const text of [english,chinese]){assert.match(text,/^kind: "package-bundle"$/m);assert.match(text,/^description: ".+"$/m);assert.ok(/\r?\n$/.test(text)&&!/\r?\n\r?\n$/.test(text))}
  assert.equal(english.split('\n').length,chinese.split('\n').length)
  assert.deepEqual([...english.matchAll(/<a id="([^"]+)">/g)].map(x=>x[1]),[...chinese.matchAll(/<a id="([^"]+)">/g)].map(x=>x[1]))
- assert.ok(english.split('## Summary\n')[1].split('\n## ')[0].trim().split(/\s+/).length<=100)
+ const lines=english.split(/\r?\n/u),start=lines.indexOf('## Summary');assert.ok(start>=0,'Missing summary heading')
+ const next=lines.findIndex((line,index)=>index>start&&line.startsWith('## '))
+ assert.ok(lines.slice(start+1,next<0?undefined:next).join(' ').trim().split(/\s+/u).length<=100)
 }
 async function files(dir){const result=[];for(const entry of await readdir(dir,{withFileTypes:true})){const path=resolve(dir,entry.name);if(entry.isDirectory())result.push(...await files(path));else if(/\.tsx?$/.test(entry.name))result.push(path)}return result}
 async function main(){
@@ -35,7 +37,7 @@ async function main(){
  child.stdout.on('data',value=>{output+=value});child.stderr.on('data',value=>{stderr+=value});child.once('error',error=>{failure=error});const code=await new Promise(done=>child.once('close',done));if(failure)throw failure;assert.equal(code,0,stderr)
  const paths=JSON.parse(output)[0].files.map(item=>item.path);verifyFiles(paths)
  for(const path of [...await files(resolve(root,'src')),...paths.map(path=>resolve(root,path))]){
-  const text=await readFile(path,'utf8');assert.ok(!/[c-f]:[\\/](?:users|个人|项目工作区)[\\/]/i.test(text),'Private path in public source');assert.ok(!/\bsk-[a-z0-9]{20,}\b/i.test(text),'Credential-like literal in public source');assert.ok(!/\bas unknown\b/.test(text));assert.ok(text.endsWith('\n')&&!text.endsWith('\n\n'),'Trailing newline')
+  const text=await readFile(path,'utf8');assert.ok(!/[c-f]:[\\/](?:users|个人|项目工作区)[\\/]/i.test(text),'Private path in public source');assert.ok(!/\bsk-[a-z0-9]{20,}\b/i.test(text),'Credential-like literal in public source');assert.ok(!/\bas unknown\b/.test(text));assert.ok(/\r?\n$/.test(text)&&!/\r?\n\r?\n$/.test(text),'Trailing newline')
  }
  console.log(JSON.stringify({passed:true,packedFiles:paths.length,checks:['public-entries','paired-docs','public-dependencies','artifact-allowlist','source-hygiene']}))
 }
