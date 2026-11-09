@@ -1,0 +1,96 @@
+{
+  "package": "dsh-qq-history-search",
+  "version": "0.3.0-development",
+  "sourceCommit": "ca5264d81e40f337cc28c46e38c691b4220a357d",
+  "role": "authorized Host search and opt-in native model tool",
+  "archive": "dsh-qq-history-search/artifacts/dsh-qq-history-search-0.3.0-development.tgz",
+  "sha256": "90f54bb79ff9529bbbe46d094db6f5673e1d6acd3b2092d4829ad4a60bf16535",
+  "unitTestsPerNode": 32,
+  "ciRun": 42619812923,
+  "passedCiJobs": 9,
+  "jobs": [
+    {
+      "name": "package (windows-latest, 22.19.0)",
+      "conclusion": "success"
+    },
+    {
+      "name": "native (ubuntu-latest, 24.x)",
+      "conclusion": "success"
+    },
+    {
+      "name": "native (windows-latest, 24.x)",
+      "conclusion": "success"
+    },
+    {
+      "name": "package (ubuntu-latest, 24.x)",
+      "conclusion": "success"
+    },
+    {
+      "name": "native (windows-latest, 22.19.0)",
+      "conclusion": "success"
+    },
+    {
+      "name": "native (ubuntu-latest, 22.19.0)",
+      "conclusion": "success"
+    },
+    {
+      "name": "web",
+      "conclusion": "success"
+    },
+    {
+      "name": "package (windows-latest, 24.x)",
+      "conclusion": "success"
+    },
+    {
+      "name": "package (ubuntu-latest, 22.19.0)",
+      "conclusion": "success"
+    }
+  ],
+  "anonymousDownloadHashVerified": true,
+  "releaseUrl": "https://github.com/Soldsix/dsh-qq-history-search/releases/tag/v0.3.0-development",
+  "ciUrl": "https://github.com/Soldsix/dsh-qq-history-search/actions/runs/42619812923",
+  "host": "DSH 0.2.2-rc.1 / Node >=24.9; Node 22.19 is library compatibility evidence",
+  "realModelApiRequests": 0,
+  "realQqMessagesSent": 0,
+  "productionChanged": false,
+  "personaOrSkillsRead": false,
+  "protectedGroupDataRead": false,
+  "semanticRecallVerified": false,
+  "publicRegistryPublished": false,
+  "evidence": "dsh-qq-history-search/evidence/20261109/native-history/release.json",
+  "nativeChecks": 4,
+  "nativeModelChecks": 6,
+  "nativeAdapterRequests": 22,
+  "peakConcurrentRequests": 2,
+  "canonicalToolResultEvents": 10,
+  "modelChecks": [
+    "archive-ingests-unaddressed-sources-without-model-replies",
+    "native-tool-calls-bind-real-source-and-reject-model-selected-identity",
+    "parallel-groups-and-senders-do-not-share-model-history",
+    "preview-cannot-activate-history-tool-or-send",
+    "shared-session-reload-unregisters-tool-before-new-model-request",
+    "restored-isolation-retains-records-and-logs-canonical-tool-results"
+  ],
+  "webChecks": 9,
+  "installedFiles": 31,
+  "strictDeclarationInputs": 341,
+  "ancestorDependenciesBorrowed": false,
+  "syntheticComposition": {
+    "passed": true,
+    "stored": 14,
+    "selfMatches": 1,
+    "otherDenied": true,
+    "adminMatches": 2,
+    "parallelWrites": 12,
+    "parallelSearches": 3,
+    "realQqMessagesSent": 0
+  },
+  "modelBackend": "controlled loopback HTTP through the real native DSH adapter",
+  "modelToolDisabledByDefault": true,
+  "modelArgumentsCannotChooseRequesterOrScope": true,
+  "sharedGroupModelSessionsRefused": true,
+  "privateSourcesRemainUnchanged": true,
+  "semanticMemoryCompleted": false,
+  "initialCiFailure": "Windows CRLF summary-heading parser; fixed with LF/CRLF regression checks",
+  "supersededCiRun": 42619315186
+}
